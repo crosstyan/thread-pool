@@ -222,17 +222,14 @@ namespace dp {
             });
         }
 
-        [[nodiscard]] bool full() const { return pending_tasks() == capacity(); }
+        [[nodiscard]] bool full() const { return running_tasks() == capacity(); }
+
+        [[nodiscard]] bool empty() const { return running_tasks() == 0; }
 
         /**
-         * @brief total number of tasks in the thread pool
+         * @brief total number of tasks in the thread pool (pending + running)
          */
-        [[nodiscard]] auto total() const {
-            const auto sz =
-                std::accumulate(tasks_.begin(), tasks_.end(), 0,
-                                [](auto acc, auto &item) { return acc + item.tasks.size(); });
-            return sz;
-        }
+        [[nodiscard]] auto total() const { return pending_tasks() + running_tasks(); }
 
       private:
         template <typename Function>
