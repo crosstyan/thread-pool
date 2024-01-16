@@ -39,6 +39,11 @@ namespace dp {
             data_.push_front(std::forward<T>(value));
         }
 
+        [[nodiscard]] size_t size() const {
+            std::scoped_lock lock(mutex_);
+            return data_.size();
+        }
+
         [[nodiscard]] bool empty() const {
             std::scoped_lock lock(mutex_);
             return data_.empty();

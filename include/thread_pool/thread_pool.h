@@ -2,11 +2,13 @@
 
 #include <atomic>
 #include <barrier>
+#include <chrono>
 #include <concepts>
 #include <deque>
 #include <functional>
 #include <future>
 #include <memory>
+#include <numeric>
 #include <semaphore>
 #include <thread>
 #include <type_traits>
@@ -34,6 +36,9 @@ namespace dp {
                  std::is_same_v<void, std::invoke_result_t<FunctionType>>
     class thread_pool {
       public:
+        using clk = std::chrono::high_resolution_clock;
+        using tp = clk::time_point;
+        using dur = clk::duration;
         explicit thread_pool(
             const unsigned int &number_of_threads = std::thread::hardware_concurrency())
             : tasks_(number_of_threads) {
@@ -51,7 +56,9 @@ namespace dp {
                                 while (auto task = tasks_[id].tasks.pop_front()) {
                                     try {
                                         pending_tasks_.fetch_sub(1, std::memory_order_release);
+                                        tasks_[id].running.store(true, std::memory_order_release);
                                         std::invoke(std::move(task.value()));
+                                        tasks_[id].running.store(false, std::memory_order_release);
                                     } catch (...) {
                                     }
                                 }
@@ -72,6 +79,7 @@ namespace dp {
 
                             priority_queue_.rotate_to_front(id);
 
+                            // The destructor of jthread calls request_stop() and join()
                         } while (!stop_tok.stop_requested());
                     });
                     // increment the thread id
@@ -192,7 +200,39 @@ namespace dp {
                 }));
         }
 
+        /**
+         * @brief the number of threads in the thread pool
+         */
+        [[nodiscard]] auto capacity() const { return threads_.size(); }
+
+        /**
+         * @brief the number of threads in the thread pool
+         * @deprecated use capacity() instead
+         */
         [[nodiscard]] auto size() const { return threads_.size(); }
+
+        /**
+         * @brief the number of pending tasks
+         */
+        [[nodiscard]] auto pending_tasks() const { return pending_tasks_.load(); }
+
+        [[nodiscard]] auto running_tasks() const {
+            return std::accumulate(tasks_.begin(), tasks_.end(), 0, [](auto acc, auto &item) {
+                return acc + (item.running ? 1 : 0);
+            });
+        }
+
+        [[nodiscard]] bool full() const { return pending_tasks() == capacity(); }
+
+        /**
+         * @brief total number of tasks in the thread pool
+         */
+        [[nodiscard]] auto total() const {
+            const auto sz =
+                std::accumulate(tasks_.begin(), tasks_.end(), 0,
+                                [](auto acc, auto &item) { return acc + item.tasks.size(); });
+            return sz;
+        }
 
       private:
         template <typename Function>
@@ -211,6 +251,7 @@ namespace dp {
         struct task_item {
             dp::thread_safe_queue<FunctionType> tasks{};
             std::binary_semaphore signal{0};
+            std::atomic_bool running{false};
         };
 
         std::vector<ThreadType> threads_;
