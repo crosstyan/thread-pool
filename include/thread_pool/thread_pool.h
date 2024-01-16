@@ -222,8 +222,14 @@ namespace dp {
             });
         }
 
+        /**
+         * @brief if the thread pool running at full capacity
+         */
         [[nodiscard]] bool full() const { return running_tasks() == capacity(); }
 
+        /**
+         * @brief if the thread pool is empty
+         */
         [[nodiscard]] bool empty() const { return running_tasks() == 0; }
 
         /**
