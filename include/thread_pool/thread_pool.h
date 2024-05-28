@@ -10,6 +10,18 @@
 #include <semaphore>
 #include <thread>
 #include <type_traits>
+
+#ifndef USE_JJTHREAD
+#if !defined(__cpp_lib_jthread)
+#warning "std::jthread is not available, including jjthread.hpp from josuttis/jthread"
+#define USE_JJTHREAD
+#endif // defined(__cpp_lib_jthread)
+#endif // USE_JJTHREAD
+
+#ifdef USE_JJTHREAD
+#include <jthread.hpp>
+#endif
+
 #ifdef __has_include
 #    if __has_include(<version>)
 #        include <version>
