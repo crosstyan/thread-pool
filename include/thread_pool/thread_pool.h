@@ -18,6 +18,16 @@
 #    endif
 #endif
 
+#ifdef USE_JJTHREAD
+#include <jthread.hpp>
+#endif
+
+#ifdef __has_include
+#    if __has_include(<version>)
+#        include <version>
+#    endif
+#endif
+
 #include "thread_pool/thread_safe_queue.h"
 
 namespace dp {
